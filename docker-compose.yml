@@ -1,0 +1,243 @@
+# ----------------------------------------------------------------------------------------
+# -- Docs: https://github.com/cluster-apps-on-docker/spark-standalone-cluster-on-docker --
+#
+#   Jupyter notebook - http://localhost:8888
+#   HUE Desktop      - http://localhost:8890
+#   Namenode         - http://localhost:50070
+#   Datanode         - http://localhost:50075
+#   Hive Server      - http://localhost:10000
+#   Spark Master     - http://localhost:8080
+#   Spark Job Mgr    - http://localhost:4040
+#   Hive Server      - http://localhost:10000
+#
+#
+# ----------------------------------------------------------------------------------------
+version: "3.6"
+volumes:
+  shared-workspace:
+  rs1:
+  namenode:
+  datanode:
+  pg_data:
+  hadoop_namenode:
+  hadoop_datanode:
+  hadoop_historyserver:
+
+services:
+  jupyterlab:
+    image: jupyter/all-spark-notebook
+    container_name: jupyterlab
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    ports:
+      - 4040:4040
+      - 8888:8888
+    working_dir: /opt/workspace
+    volumes:
+      - ./work:/opt/workspace
+    command: start-notebook.sh --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=
+    networks:
+      - localnet
+
+#
+# HADOOP & HIVE
+#
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    restart: always
+    ports:
+      - 9870:9870
+      - 9000:9000
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop-hive.env
+    networks:
+      - localnet
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    restart: always
+    ports:
+      - 9864:9864
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    env_file:
+      - ./hadoop-hive.env
+    networks:
+      - localnet
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    restart: always
+    ports:
+      - 8088:8088
+      - 8030:8030
+      - 8031:8031
+      - 8032:8032
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
+    env_file:
+      - ./hadoop-hive.env
+    networks:
+      - localnet
+
+  nodemanager1:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    restart: always
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+    env_file:
+      - ./hadoop-hive.env
+    networks:
+      - localnet
+
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    container_name: historyserver
+    restart: always
+    ports:
+      - 8188:8188
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+    volumes:
+      - hadoop_historyserver:/hadoop/yarn/timeline
+    env_file:
+      - ./hadoop-hive.env
+    networks:
+      - localnet
+
+  hive-server:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-server
+    env_file:
+      - ./hadoop-hive.env
+    environment:
+      HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore/metastore"
+      SERVICE_PRECONDITION: "hive-metastore:9083"
+    ports:
+      - "10000:10000"
+      - "9999:9999"
+    networks:
+      - localnet
+
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-metastore
+    env_file:
+      - ./hadoop-hive.env
+    command: /opt/hive/bin/hive --service metastore
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870 datanode:9864 resourcemanager:8088 hive-metastore-postgresql:5432"
+    ports:
+      - "9083:9083"
+    networks:
+      - localnet
+
+  hive-metastore-postgresql:
+    image: bde2020/hive-metastore-postgresql:2.3.0
+    container_name: hive-metastore-postgresql
+    ports:
+      - "5432:5432"
+    networks:
+      - localnet
+
+  huedb:
+    image: postgres:12.1-alpine
+    container_name: huedb
+    volumes:
+      - pg_data:/var/lib/postgresl/data/
+    ports:
+      - "5432"
+    env_file:
+      - ./hadoop-hive.env
+    environment:
+        SERVICE_PRECONDITION: "namenode:9870 datanode:9864 hive-metastore-postgresql:5432 resourcemanager:8088 hive-metastore:9083"
+    networks:
+      - localnet
+
+  hue:
+    image: gethue/hue:4.6.0
+    container_name: hue
+    environment:
+        SERVICE_PRECONDITION: "namenode:9870 datanode:9864 hive-metastore-postgresql:5432 resourcemanager:8088 hive-metastore:9083 huedb:5000"
+    ports:
+        - "8890:8888"
+    volumes:
+      - ./hue-overrides.ini:/usr/share/hue/desktop/conf/hue-overrides.ini
+    links:
+      - huedb
+    networks:
+      - localnet
+
+
+#
+# SPARK
+# master and two workers
+#
+
+  spark-master:
+    image: bde2020/spark-master
+    container_name: spark-master
+    ports:
+       - 8080:8080
+       - 7077:7077
+    volumes:
+       - shared-workspace:/opt/workspace
+    networks:
+       - localnet
+  
+  spark-worker-1:
+    image: bde2020/spark-worker
+    container_name: spark-worker-1
+    environment:
+       - SPARK_WORKER_CORES=1
+       - SPARK_WORKER_MEMORY=1g
+    ports:
+       - 8081:8081
+    volumes:
+       - shared-workspace:/opt/workspace
+    depends_on:
+       - spark-master
+    networks:
+       - localnet
+
+#
+# MONGODB
+# MongoDB deployment and initial setup with Source.bson stocks data
+# Stocsk data is used by the python examples
+#
+  mongo1:
+    image: "mongo:latest"
+    container_name: mongo1
+    volumes:
+       - rs1:/data/db
+    ports:
+       - "27017:27017"
+    networks:
+       - localnet
+    restart: always
+
+#  mongo-setup:
+#    image: "mongo:latest"
+#    container_name: mongo-setup
+#    depends_on:
+#        - mongo1
+#    restart: "no"
+#    entrypoint: [ "bash", "-c", "sleep 10 && mongorestore /opt/data/Source.bson -h mongo1:27017 -d Stocks -c Source --drop "]
+#    volumes:
+#      - ./data/Source.bson:/opt/data/Source.bson
+#    networks:
+#      - localnet
+
+networks:
+    localnet:
+        attachable: true
