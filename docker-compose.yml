@@ -188,8 +188,15 @@ services:
     image: bde2020/spark-master
     container_name: spark-master
     ports:
-       - 8080:8080
+       # Spark RPC
        - 7077:7077
+       # Spark Master Web UI
+       - 8080:8080
+       # Spark job Web UI: increments for each successive job
+       - 4040:4040
+       - 4041:4041
+       - 4042:4042
+       - 4043:4043
     volumes:
        - shared-workspace:/opt/workspace
     networks:

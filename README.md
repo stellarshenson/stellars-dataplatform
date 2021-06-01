@@ -20,12 +20,12 @@ You need to install the following prerequisites:
     * docker-compose --version
  * execute 'docker-compose up'
 
-Connect to http://localhost:8888 for jupyter notebook. Authentication has been turned off on purpose
-Connect to http://localhost:8080 for spark master monitoring
-Connect to http://localhost:4040 for spart jobs and resources overview
-Connect to http://localhost:8890 for Hue
-Connect to http://localhost:10000 for Hive
-Connect to http://localhost:9870 for Hadoop Namenode
+ - http://localhost:8888 for jupyter notebook. Authentication has been turned off on purpose
+ - http://localhost:8080 for spark master monitoring
+ - http://localhost:4040 for spart jobs and resources overview
+ - http://localhost:8890 for Hue
+ - http://localhost:10000 for Hive
+ - http://localhost:9870 for Hadoop Namenode
 
 ### sources:
  - https://github.com/big-data-europe/README
