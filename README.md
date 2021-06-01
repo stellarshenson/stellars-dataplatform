@@ -20,11 +20,10 @@ You need to install the following prerequisites:
     * docker-compose --version
  * execute 'docker-compose up'
 
- - http://localhost:8888 for jupyter notebook. Authentication has been turned off on purpose
  - http://localhost:8080 for spark master monitoring
- - http://localhost:4040 for spart jobs and resources overview
+ - http://localhost:8888 for jupyter notebook. Authentication has been turned off on purpose
+ - http://localhost:4040 for spart jobs and resources overview (must run job)
  - http://localhost:8890 for Hue
- - http://localhost:10000 for Hive
  - http://localhost:9870 for Hadoop Namenode
 
 ### sources:
