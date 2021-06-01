@@ -1,5 +1,5 @@
 # Introduction
-Single node dataplatform with the following technology stack:
+Standalone dataplatform with the following technology stack:
 
  * Hadoop 3.2.1
  * Hive 2.3.2
