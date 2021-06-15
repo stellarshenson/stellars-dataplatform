@@ -1,0 +1,3 @@
+[submodule "build/livy-server-docker"]
+	path = build/livy-server-docker
+	url = https://github.com/stellarshenson/livy-server-docker.git

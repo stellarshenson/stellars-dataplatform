@@ -7,43 +7,27 @@
 #   Datanode         - http://localhost:50075
 #   Hive Server      - http://localhost:10000
 #   Spark Master     - http://localhost:8080
-#   Spark Job Mgr    - http://localhost:4040
 #   Hive Server      - http://localhost:10000
+#   Livy Server      - http://localhost:8998
+#   Spark Job Mgr    - http://localhost:4040
 #
 #
 # ----------------------------------------------------------------------------------------
 version: "3.6"
 volumes:
-  shared-workspace:
-  rs1:
-  namenode:
-  datanode:
-  pg_data:
   hadoop_namenode:
   hadoop_datanode:
   hadoop_historyserver:
+  hue_data:
 
 services:
-  jupyterlab:
-    image: jupyter/all-spark-notebook
-    container_name: jupyterlab
-    environment:
-      - JUPYTER_ENABLE_LAB=yes
-    ports:
-      - 8888:8888
-    working_dir: /opt/workspace
-    volumes:
-      - ./work:/opt/workspace
-    command: start-notebook.sh --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=
-    networks:
-      - localnet
 
 #
 # HADOOP & HIVE
 #
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: namenode
+    container_name: hadoop-namenode
     restart: always
     ports:
       - 9870:9870
@@ -51,7 +35,7 @@ services:
     volumes:
       - hadoop_namenode:/hadoop/dfs/name
     environment:
-      - CLUSTER_NAME=test
+      - CLUSTER_NAME=sandbox
     env_file:
       - ./hadoop-hive.env
     networks:
@@ -59,7 +43,7 @@ services:
 
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode
+    container_name: hadoop-datanode
     restart: always
     ports:
       - 9864:9864
@@ -74,7 +58,7 @@ services:
 
   resourcemanager:
     image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
-    container_name: resourcemanager
+    container_name: hadoop-resourcemanager
     restart: always
     ports:
       - 8088:8088
@@ -88,9 +72,9 @@ services:
     networks:
       - localnet
 
-  nodemanager1:
+  nodemanager:
     image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
-    container_name: nodemanager
+    container_name: hadoop-nodemanager
     restart: always
     environment:
       SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
@@ -101,7 +85,7 @@ services:
 
   historyserver:
     image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
-    container_name: historyserver
+    container_name: hadoop-historyserver
     restart: always
     ports:
       - 8188:8188
@@ -153,7 +137,7 @@ services:
     image: postgres:12.1-alpine
     container_name: huedb
     volumes:
-      - pg_data:/var/lib/postgresl/data/
+      - hue_data:/var/lib/postgressl/data/
     ports:
       - "5432"
     env_file:
@@ -176,61 +160,108 @@ services:
       - huedb
     networks:
       - localnet
-
-
 #
 # SPARK
-# master and two workers
 #
-
+# master and two workers
+# from bde2020. Livy Spark version requires 2.x
+# spark 3 image is commented out, uncomment to test
+# spark worker has the pyspark installed, but not R
+#services:
   spark-master:
-    image: bde2020/spark-master
+    #image: bde2020/spark-master
+    image: stellars/spark-master:2.4.5-hadoop2.7
     container_name: spark-master
+    build:
+       context: $PWD/build
+       dockerfile: spark-master.Dockerfile
     ports:
-       # Spark RPC
        - 7077:7077
-       # Spark Master Web UI
        - 8080:8080
-       # Spark job Web UI: increments for each successive job
-       - 4040:4040
-       - 4041:4041
-       - 4042:4042
-       - 4043:4043
+       # - 4040-4049:4040-4049
     volumes:
-       - shared-workspace:/opt/workspace
+       - $PWD/work:/opt/workspace
     networks:
        - localnet
-  
+
   spark-worker-1:
-    image: bde2020/spark-worker
+    # image: bde2020/spark-worker
+    image: stellars/spark-worker:2.4.5-hadoop2.7
     container_name: spark-worker-1
+    build:
+       context: $PWD/build
+       dockerfile: spark-worker.Dockerfile
     environment:
        - SPARK_WORKER_CORES=1
        - SPARK_WORKER_MEMORY=1g
     ports:
        - 8081:8081
     volumes:
-       - shared-workspace:/opt/workspace
+       - $PWD/work:/opt/workspace
     depends_on:
        - spark-master
     networks:
        - localnet
+
+  # Livy provides REST API for Spark. The image below
+  # livy image is an extension from https://github.com/cloudiator/livy-server-docker
+  # supports the following spark kinds: spark, sparkr and pyspark
+  livy:
+    #image: cloudiator/livy-server:latest
+    #image: stellars/livy-server:latest
+    image: stellars/livy-server
+    container_name: livy
+    build:
+        context: $PWD/build/livy-server-docker
+        dockerfile: Dockerfile
+    environment:
+      # mode client or cluster
+      - SPARK_MASTER_ENDPOINT=spark-master
+      - SPARK_MASTER_PORT=7077
+      - DEPLOY_MODE=client
+    ports:
+      - 8998:8998
+      - 4040:4040
+    volumes:
+      # directory to submit jars
+      - $PWD/jars:/tmp
+    depends_on:
+      - "spark-master"
+      - "spark-worker-1"
+    networks:
+      - localnet
+
+  jupyterlab:
+    image: jupyter/all-spark-notebook
+    container_name: jupyterlab
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    ports:
+      - 8888:8888
+    working_dir: /opt/workspace
+    volumes:
+      - $PWD/work:/opt/workspace
+    command: start-notebook.sh --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=
+    networks:
+      - localnet
+
 
 #
 # MONGODB
 # MongoDB deployment and initial setup with Source.bson stocks data
 # Stocsk data is used by the python examples
 #
-  mongo1:
-    image: "mongo:latest"
-    container_name: mongo1
-    volumes:
-       - rs1:/data/db
-    ports:
-       - "27017:27017"
-    networks:
-       - localnet
-    restart: always
+
+  # mongo1:
+  #   image: "mongo:latest"
+  #   container_name: mongo1
+  #   volumes:
+  #      - rs1:/data/db
+  #   ports:
+  #      - "27017:27017"
+  #   networks:
+  #      - localnet
+  #   restart: always
 
 #  mongo-setup:
 #    image: "mongo:latest"
@@ -238,12 +269,12 @@ services:
 #    depends_on:
 #        - mongo1
 #    restart: "no"
-#    entrypoint: [ "bash", "-c", "sleep 10 && mongorestore /opt/data/Source.bson -h mongo1:27017 -d Stocks -c Source --drop "]
+#    entrypoint: [ "bash", "-c", "sleep 10 && mongorestore /opt/work/data/stocks-source.bson -h mongo1:27017 -d Stocks -c Source --drop "]
 #    volumes:
-#      - ./data/Source.bson:/opt/data/Source.bson
+#      - $PWD/work/data/stocks-source.bson:/opt/data/stocks-source.bson
 #    networks:
 #      - localnet
 
 networks:
     localnet:
-        attachable: true
+        # attachable: true
