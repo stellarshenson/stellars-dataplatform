@@ -224,7 +224,7 @@ services:
       - 4040:4040
     volumes:
       # directory to submit jars
-      - $PWD/jars:/tmp
+      - $PWD/jars:/jars
     depends_on:
       - "spark-master"
       - "spark-worker-1"
