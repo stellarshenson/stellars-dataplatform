@@ -1,3 +1,6 @@
 [submodule "build/livy-server-docker"]
 	path = build/livy-server-docker
 	url = https://github.com/stellarshenson/livy-server-docker.git
+[submodule "build/thrift-http-server-docker"]
+	path = build/thrift-http-server-docker
+	url = https://github.com/stellarshenson/thrift-http-server-docker.git

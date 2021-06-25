@@ -104,20 +104,23 @@ services:
   hive-server:
     image: bde2020/hive:2.3.2-postgresql-metastore
     container_name: hive-server
+    hostname: hive-server
     env_file:
       - ./hadoop-hive.env
     environment:
       HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore/metastore"
       SERVICE_PRECONDITION: "hive-metastore:9083"
     ports:
-      - "10000:10000"
       - "9999:9999"
+      - "10000:10000"
+      - "10002:10002"
     networks:
       - localnet
 
   hive-metastore:
     image: bde2020/hive:2.3.2-postgresql-metastore
     container_name: hive-metastore
+    hostname: hive-metastore
     env_file:
       - ./hadoop-hive.env
     command: /opt/hive/bin/hive --service metastore
@@ -137,6 +140,7 @@ services:
       - localnet
 
   huedb:
+    container_name: hue-db
     image: postgres:12.1-alpine
     volumes:
       - hue_data:/var/lib/postgressl/data/
@@ -144,7 +148,6 @@ services:
       - "5432"
     env_file:
       - ./hadoop-hive.env
-      #- ./hadoop-hive-old.env
     environment:
       SERVICE_PRECONDITION: "namenode:9870 datanode:9864 hive-metastore:9083"
       #SERVICE_PRECONDITION: "namenode:50070 datanode:50074 hive-server:10000"
@@ -152,6 +155,7 @@ services:
       - localnet
 
   hue:
+    container_name: hue-server
     image: gethue/hue:latest
     environment:
         SERVICE_PRECONDITION: "namenode:9870 datanode:9864 hive-metastore:9083 huedb:5432"
@@ -173,6 +177,8 @@ services:
 # spark worker has the pyspark installed, but not R
   spark-master:
     #image: bde2020/spark-master
+    container_name: spark-master
+    hostname: spark-master
     image: stellars/spark-master:3.1.1-hadoop3.2
     build:
        context: $PWD/build
@@ -186,8 +192,11 @@ services:
     networks:
        - localnet
 
+
   spark-worker-1:
     #image: bde2020/spark-worker
+    container_name: spark-worker-1
+    hostname: spark-worker-1
     image: stellars/spark-worker:3.1.1-hadoop3.2
     build:
        context: $PWD/build
@@ -195,12 +204,39 @@ services:
     environment:
        - SPARK_WORKER_CORES=2
        - SPARK_WORKER_MEMORY=2g
+       - SPARK_MASTER=spark://spark-master:7077
     ports:
        - 8081:8081
     volumes:
        - $PWD/work:/opt/workspace
     depends_on:
        - spark-master
+    networks:
+       - localnet
+
+# spark http thrift server that offer HTTB RPC endpoint
+# used by many BI tools such as powerbi and tabelau
+# and allows execution of the HIVE SQL with Spark workers
+# this server exposes http://localhost:10001/cliservice endpoint
+  thrift-server:
+    #image: bde2020/spark-worker
+    container_name: thrift-server
+    hostname: thrift-server
+    image: stellars/thrift-server:3.1.1-hadoop3.2
+    build:
+       context: $PWD/build/thrift-http-server-docker
+       dockerfile: Dockerfile
+    environment:
+       SPARK_MASTER: "spark://spark-master:7077"
+       SERVICE_PRECONDITION: "hive-metastore:9083"
+    env_file:
+      - ./hadoop-hive.env
+      - ./hadoop-hive-http.env
+    ports:
+       - "10001:10001"
+    volumes:
+       - $PWD/work:/opt/workspace
+    #command: /usr/bin/tail -F /dev/null
     networks:
        - localnet
 
@@ -231,7 +267,13 @@ services:
   #     - localnet
 
   jupyterlab:
-    image: jupyter/all-spark-notebook:spark-3.1.1
+    container_name: jupyter
+    hostname: jupyter
+    image: stellars/all-spark-notebook:spark-3.1.1
+    #image: jupyter/all-spark-notebook:spark-3.1.1
+    build:
+       context: $PWD/build
+       dockerfile: jupyter.Dockerfile
     container_name: jupyterlab
     environment:
       - JUPYTER_ENABLE_LAB=yes
@@ -246,6 +288,9 @@ services:
     command: start-notebook.sh --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=
     networks:
       - localnet
+
+
+
 
 #
 # MONGODB
