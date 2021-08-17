@@ -22,10 +22,9 @@ volumes:
 
 services:
 
-#
-# HADOOP & HIVE
-#
-
+  #
+  # HADOOP & HIVE
+  #
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     container_name: hadoop-namenode
@@ -168,15 +167,16 @@ services:
   #     - huedb
   #   networks:
   #     - localnet
-#
-# SPARK
-#
-# master and two workers
-# base image: bde2020/spark-master and bde2020/spark-worker
-# from bde2020. Livy Spark version requires 2.x
-# spark 3 image is commented out, uncomment to test
-# spark worker has the pyspark installed, but not R
-# spark has been updated to support R language
+
+  #
+  # SPARK
+  #
+  # master and two workers
+  # base image: bde2020/spark-master and bde2020/spark-worker
+  # from bde2020. Livy Spark version requires 2.x
+  # spark 3 image is commented out, uncomment to test
+  # spark worker has the pyspark installed, but not R
+  # spark has been updated to support R language
   spark-master:
     container_name: spark-master
     hostname: spark-master
@@ -213,10 +213,10 @@ services:
     networks:
        - localnet
 
-# spark http thrift server that offer HTTP RPC endpoint
-# used by many BI tools such as powerbi and tableau
-# and allows execution of the HIVE SQL with Spark workers
-# this server exposes http://localhost:10001/cliservice endpoint
+  # spark http thrift server that offer HTTP RPC endpoint
+  # used by many BI tools such as powerbi and tableau
+  # and allows execution of the HIVE SQL with Spark workers
+  # this server exposes http://localhost:10001/cliservice endpoint
   # spark-sql-server:
   #   container_name: thrift-server
   #   hostname: thrift-server
@@ -263,8 +263,8 @@ services:
   #   networks:
   #     - localnet
 
-# Jupyterlab has been rebuilt to use root account for simplicity
-# base image: jupyter/all-spark-notebook:spark-3.1.1
+  # Jupyterlab has been rebuilt to use root account for simplicity
+  # base image: jupyter/all-spark-notebook:spark-3.1.1
   jupyterlab:
     container_name: jupyter
     hostname: jupyter
