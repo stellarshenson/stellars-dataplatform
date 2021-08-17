@@ -182,7 +182,7 @@ services:
     hostname: spark-master
     image: stellars/spark-master:3.1.1-hadoop3.2
     build:
-       context: build
+       context: $PWD/build
        dockerfile: spark-master.Dockerfile
     ports:
        - 7077:7077
@@ -198,7 +198,7 @@ services:
     hostname: spark-worker-1
     image: stellars/spark-worker:3.1.1-hadoop3.2
     build:
-       context: build
+       context: $PWD/build
        dockerfile: spark-worker.Dockerfile
     environment:
        - SPARK_WORKER_CORES=2
@@ -222,7 +222,7 @@ services:
     hostname: thrift-server
     image: stellars/thrift-server:3.1.1-hadoop3.2
     build:
-       context: build/thrift-http-server-docker
+       context: $PWD/build/thrift-http-server-docker
        dockerfile: Dockerfile
     environment:
        SPARK_MASTER: "spark://spark-master:7077"
@@ -269,7 +269,7 @@ services:
     image: stellars/all-spark-notebook:spark-3.1.1
     #base image: jupyter/all-spark-notebook:spark-3.1.1
     build:
-       context: build
+       context: $PWD/build
        dockerfile: jupyter.Dockerfile
     container_name: jupyterlab
     environment:
