@@ -22,10 +22,9 @@ volumes:
 
 services:
 
-#
-# HADOOP & HIVE
-#
-
+  #
+  # HADOOP & HIVE
+  #
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     container_name: hadoop-namenode
@@ -101,6 +100,7 @@ services:
     networks:
       - localnet
 
+  # Hive SQL frontend to Hadoop and spark
   hive-server:
     image: bde2020/hive:2.3.2-postgresql-metastore
     container_name: hive-server
@@ -139,6 +139,7 @@ services:
     networks:
       - localnet
 
+  # HUE frontend to hive and hadoop
   huedb:
     container_name: hue-db
     image: postgres:12.1-alpine
@@ -150,7 +151,6 @@ services:
       - ./hadoop-hive.env
     environment:
       SERVICE_PRECONDITION: "namenode:9870 datanode:9864 hive-metastore:9083"
-      #SERVICE_PRECONDITION: "namenode:50070 datanode:50074 hive-server:10000"
     networks:
       - localnet
 
@@ -159,7 +159,6 @@ services:
     image: gethue/hue:latest
     environment:
         SERVICE_PRECONDITION: "namenode:9870 datanode:9864 hive-metastore:9083 huedb:5432"
-        #SERVICE_PRECONDITION: "namenode:50070 datanode:50074 hive-server:10000"
     ports:
         - "8890:8888"
     volumes:
@@ -189,7 +188,7 @@ services:
        - 8080:8080
        # - 4040-4049:4040-4049
     volumes:
-       - $PWD/work:/opt/workspace
+       - ./work:/opt/workspace
     networks:
        - localnet
 
@@ -207,7 +206,7 @@ services:
     ports:
        - 8081:8081
     volumes:
-       - $PWD/work:/opt/workspace
+       - ./work:/opt/workspace
     depends_on:
        - spark-master
     networks:
@@ -233,7 +232,7 @@ services:
     ports:
        - "10001:10001"
     volumes:
-       - $PWD/work:/opt/workspace
+       - ./work:/opt/workspace
     networks:
        - localnet
 
@@ -263,11 +262,12 @@ services:
   #   networks:
   #     - localnet
 
+# Jupyterlab has been rebuilt to use root account for simplicity
+# base image: jupyter/all-spark-notebook:spark-3.1.1
   jupyterlab:
     container_name: jupyter
     hostname: jupyter
     image: stellars/all-spark-notebook:spark-3.1.1
-    #base image: jupyter/all-spark-notebook:spark-3.1.1
     build:
        context: build
        dockerfile: jupyter.Dockerfile
@@ -281,42 +281,11 @@ services:
       - 8889:8889
     working_dir: /opt/workspace
     volumes:
-      - $PWD/work:/opt/workspace
+      - ./work:/opt/workspace
     command: start-notebook.sh --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=
     networks:
       - localnet
 
-
-
-
-#
-# MONGODB
-# MongoDB deployment and initial setup with Source.bson stocks data
-# Stocsk data is used by the python examples
-#
-
-  # mongo1:
-  #   image: "mongo:latest"
-  #   container_name: mongo1
-  #   volumes:
-  #      - rs1:/data/db
-  #   ports:
-  #      - "27017:27017"
-  #   networks:
-  #      - localnet
-  #   restart: always
-
-#  mongo-setup:
-#    image: "mongo:latest"
-#    container_name: mongo-setup
-#    depends_on:
-#        - mongo1
-#    restart: "no"
-#    entrypoint: [ "bash", "-c", "sleep 10 && mongorestore /opt/work/data/stocks-source.bson -h mongo1:27017 -d Stocks -c Source --drop "]
-#    volumes:
-#      - $PWD/work/data/stocks-source.bson:/opt/data/stocks-source.bson
-#    networks:
-#      - localnet
 
 networks:
     localnet:
