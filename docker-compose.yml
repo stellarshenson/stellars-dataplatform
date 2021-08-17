@@ -172,11 +172,12 @@ services:
 # SPARK
 #
 # master and two workers
+# base image: bde2020/spark-master and bde2020/spark-worker
 # from bde2020. Livy Spark version requires 2.x
 # spark 3 image is commented out, uncomment to test
 # spark worker has the pyspark installed, but not R
+# spark has been updated to support R language
   spark-master:
-    #image: bde2020/spark-master
     container_name: spark-master
     hostname: spark-master
     image: stellars/spark-master:3.1.1-hadoop3.2
@@ -192,9 +193,7 @@ services:
     networks:
        - localnet
 
-
   spark-worker-1:
-    #image: bde2020/spark-worker
     container_name: spark-worker-1
     hostname: spark-worker-1
     image: stellars/spark-worker:3.1.1-hadoop3.2
@@ -214,12 +213,11 @@ services:
     networks:
        - localnet
 
-# spark http thrift server that offer HTTB RPC endpoint
-# used by many BI tools such as powerbi and tabelau
+# spark http thrift server that offer HTTP RPC endpoint
+# used by many BI tools such as powerbi and tableau
 # and allows execution of the HIVE SQL with Spark workers
 # this server exposes http://localhost:10001/cliservice endpoint
-  thrift-server:
-    #image: bde2020/spark-worker
+  spark-sql-server:
     container_name: thrift-server
     hostname: thrift-server
     image: stellars/thrift-server:3.1.1-hadoop3.2
@@ -236,7 +234,6 @@ services:
        - "10001:10001"
     volumes:
        - $PWD/work:/opt/workspace
-    #command: /usr/bin/tail -F /dev/null
     networks:
        - localnet
 
@@ -270,7 +267,7 @@ services:
     container_name: jupyter
     hostname: jupyter
     image: stellars/all-spark-notebook:spark-3.1.1
-    #image: jupyter/all-spark-notebook:spark-3.1.1
+    #base image: jupyter/all-spark-notebook:spark-3.1.1
     build:
        context: $PWD/build
        dockerfile: jupyter.Dockerfile
@@ -323,4 +320,3 @@ services:
 
 networks:
     localnet:
-        # attachable: true
