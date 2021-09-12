@@ -238,29 +238,29 @@ services:
 
   # Livy provides REST API for Spark. The image below
   # livy image is an extension from https://github.com/cloudiator/livy-server-docker
-  # image was rebuilt by stellars to support sparkr. Built on spark 2.4.5
-  # livy:
-  #   image: stellars/livy-server
-  #   container_name: livy
-  #   # build:
-  #   #     context: $PWD/build/livy-server-docker
-  #   #     dockerfile: Dockerfile
-  #   environment:
-  #     # mode client or cluster
-  #     - SPARK_MASTER_ENDPOINT=spark-master
-  #     - SPARK_MASTER_PORT=7077
-  #     - DEPLOY_MODE=client
-  #   ports:
-  #     - 8998:8998
-  #     - 4040:4040
-  #   volumes:
-  #     # directory to submit jars
-  #     - $PWD/jars:/jars
-  #   depends_on:
-  #     - "spark-master"
-  #     - "spark-worker-1"
-  #   networks:
-  #     - localnet
+  # image was rebuilt by stellars to support sparkr. Built on spark 2.4.8
+  livy:
+    image: stellars/livy-server-docker:spark2.4.8
+    container_name: livy
+    build:
+       context: $PWD/build/livy-server-docker
+       dockerfile: Dockerfile
+    environment:
+       # mode client or cluster
+       - SPARK_MASTER_ENDPOINT=spark-master
+       - SPARK_MASTER_PORT=7077
+       - DEPLOY_MODE=client
+    ports:
+       - 8998:8998
+       #- 4040:4040
+    volumes:
+       # directory to submit jars
+       - $PWD/jars:/jars
+    depends_on:
+       - "spark-master"
+       - "spark-worker-1"
+    networks:
+       - localnet
 
   # Jupyterlab has been rebuilt to use root account for simplicity
   # base image: jupyter/all-spark-notebook:spark-3.1.1
@@ -276,9 +276,9 @@ services:
       - JUPYTER_ENABLE_LAB=yes
     ports:
     ports:
-      - 4040:4040
+      #- 4040:4040
       - 8888:8888
-      - 8889:8889
+      #- 8889:8889
     working_dir: /opt/workspace
     volumes:
       - ./work:/opt/workspace
